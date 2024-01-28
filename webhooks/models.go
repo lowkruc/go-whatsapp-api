@@ -232,8 +232,8 @@ type (
 	// of a single item. Currency represents the price currency.
 	ProductItem struct {
 		ProductRetailerID string `json:"product_retailer_id,omitempty"`
-		Quantity          string `json:"quantity,omitempty"`
-		ItemPrice         string `json:"item_price,omitempty"`
+		Quantity          int64  `json:"quantity,omitempty"`
+		ItemPrice         int64  `json:"item_price,omitempty"`
 		Currency          string `json:"currency,omitempty"`
 	}
 
