@@ -31,7 +31,7 @@ import (
 	"net/textproto"
 	"path/filepath"
 
-	whttp "github.com/lowkruc/go-whatsapp-api/pkg/http"
+	whttp "github.com/lowkruc/go-whatsapp-api/http"
 )
 
 type (
@@ -76,34 +76,33 @@ type (
 func (client *Client) GetMediaInformation(ctx context.Context, mediaID string) (*MediaInformation, error) {
 	reqCtx := &whttp.RequestContext{
 		Name:       "get media",
-		BaseURL:    client.config.BaseURL,
-		ApiVersion: client.config.Version,
+		BaseURL:    client.baseURL,
+		ApiVersion: client.apiVersion,
 		Endpoints:  []string{mediaID},
 	}
 
 	params := &whttp.Request{
 		Context: reqCtx,
 		Method:  http.MethodGet,
-		Bearer:  client.config.AccessToken,
+		Bearer:  client.accessToken,
 		Payload: nil,
 	}
 
-	var media MediaInformation
-
-	err := client.bc.base.Do(ctx, params, &media)
+	media := new(MediaInformation)
+	err := whttp.Do(ctx, client.http, params, &media, client.hooks...)
 	if err != nil {
-		return nil, fmt.Errorf("get media: %w", err)
+		return nil, fmt.Errorf("get media: %v", err)
 	}
 
-	return &media, nil
+	return media, nil
 }
 
 // DeleteMedia delete the media by using its corresponding media ID.
 func (client *Client) DeleteMedia(ctx context.Context, mediaID string) (*DeleteMediaResponse, error) {
 	reqCtx := &whttp.RequestContext{
 		Name:       "delete media",
-		BaseURL:    client.config.BaseURL,
-		ApiVersion: client.config.Version,
+		BaseURL:    client.baseURL,
+		ApiVersion: client.apiVersion,
 		Endpoints:  []string{mediaID},
 	}
 
@@ -111,14 +110,14 @@ func (client *Client) DeleteMedia(ctx context.Context, mediaID string) (*DeleteM
 		Context: reqCtx,
 		Method:  http.MethodDelete,
 		Headers: map[string]string{"Content-Type": "application/json"},
-		Bearer:  client.config.AccessToken,
+		Bearer:  client.accessToken,
 		Payload: nil,
 	}
 
 	resp := new(DeleteMediaResponse)
-	err := client.bc.base.Do(ctx, params, &resp)
+	err := whttp.Do(ctx, client.http, params, &resp, client.hooks...)
 	if err != nil {
-		return nil, fmt.Errorf("delete media: %w", err)
+		return nil, fmt.Errorf("delete media: %v", err)
 	}
 
 	return resp, nil
@@ -134,23 +133,23 @@ func (client *Client) UploadMedia(ctx context.Context, mediaType MediaType, file
 
 	reqCtx := &whttp.RequestContext{
 		Name:       "upload media",
-		BaseURL:    client.config.BaseURL,
-		ApiVersion: client.config.Version,
-		Endpoints:  []string{client.config.PhoneNumberID, "media"},
+		BaseURL:    client.baseURL,
+		ApiVersion: client.apiVersion,
+		Endpoints:  []string{client.phoneNumberID, "media"},
 	}
 
 	params := &whttp.Request{
 		Context: reqCtx,
 		Method:  http.MethodPost,
 		Headers: map[string]string{"Content-Type": contentType},
-		Bearer:  client.config.AccessToken,
+		Bearer:  client.accessToken,
 		Payload: payload,
 	}
 
 	resp := new(UploadMediaResponse)
-	err = client.bc.base.Do(ctx, params, &resp)
+	err = whttp.Do(ctx, client.http, params, &resp, client.hooks...)
 	if err != nil {
-		return nil, fmt.Errorf("upload media: %w", err)
+		return nil, fmt.Errorf("upload media: %v", err)
 	}
 
 	return resp, nil
@@ -159,21 +158,8 @@ func (client *Client) UploadMedia(ctx context.Context, mediaType MediaType, file
 var ErrMediaDownload = fmt.Errorf("failed to download media")
 
 type DownloadMediaResponse struct {
-	Headers    http.Header
-	Body       io.Reader
-	StatusCode int
-}
-
-type DownloadResponseDecoder struct {
-	Resp     *DownloadMediaResponse
-	response *http.Response
-}
-
-func (d *DownloadResponseDecoder) Decode(response *http.Response) error {
-	d.Resp.Headers = response.Header
-	d.Resp.Body = response.Body
-
-	return nil
+	Headers http.Header
+	Body    io.Reader
 }
 
 // DownloadMedia download the media by using its corresponding media ID. It uses the media ID to retrieve
@@ -190,7 +176,7 @@ func (client *Client) DownloadMedia(ctx context.Context, mediaID string, retries
 	for i := 0; i <= retries; i++ {
 		select {
 		case <-ctx.Done():
-			return nil, fmt.Errorf("media download: %w", ctx.Err())
+			return nil, fmt.Errorf("media download: %v", ctx.Err())
 		default:
 		}
 		media, err := client.GetMediaInformation(ctx, mediaID)
@@ -198,30 +184,18 @@ func (client *Client) DownloadMedia(ctx context.Context, mediaID string, retries
 			return nil, err
 		}
 
-		request := whttp.MakeRequest(
-			whttp.WithRequestContext(&whttp.RequestContext{
-				Name:              "download media",
-				BaseURL:           media.URL,
-				ApiVersion:        client.config.Version,
-				PhoneNumberID:     client.config.PhoneNumberID,
-				Bearer:            client.config.AccessToken,
-				BusinessAccountID: "",
-				Endpoints:         nil,
-			}),
-			whttp.WithRequestName("download media"),
-			whttp.WithMethod(http.MethodGet),
-			whttp.WithBearer(client.config.AccessToken))
-		decoder := &DownloadResponseDecoder{}
-		if err := client.bc.base.DoWithDecoder(
-			ctx,
-			request,
-			whttp.RawResponseDecoder(decoder.Decode),
-			nil); err != nil {
-			return nil, fmt.Errorf("media download: %w", err)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, media.URL, nil)
+		if err != nil {
+			return nil, fmt.Errorf("media download: create a request: %v", err)
+		}
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", client.accessToken))
+
+		resp, err := client.http.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("media download: %v", err)
 		}
 
-		// retry
-		resp := decoder.response
+		// retry ...
 		if resp.StatusCode == http.StatusNotFound {
 			_ = resp.Body.Close()
 
@@ -231,7 +205,7 @@ func (client *Client) DownloadMedia(ctx context.Context, mediaID string, retries
 		if resp.StatusCode != http.StatusOK {
 			_ = resp.Body.Close()
 
-			return nil, fmt.Errorf("%w: status %d", ErrMediaDownload, resp.StatusCode)
+			return nil, fmt.Errorf("%v: status %d", ErrMediaDownload, resp.StatusCode)
 		}
 
 		var buf bytes.Buffer
@@ -239,7 +213,7 @@ func (client *Client) DownloadMedia(ctx context.Context, mediaID string, retries
 		if err != nil && !errors.Is(err, io.EOF) {
 			_ = resp.Body.Close()
 
-			return nil, fmt.Errorf("media download: %w", err)
+			return nil, fmt.Errorf("media download: %v", err)
 		}
 
 		_ = resp.Body.Close()
@@ -250,7 +224,7 @@ func (client *Client) DownloadMedia(ctx context.Context, mediaID string, retries
 		}, nil
 	}
 
-	return nil, fmt.Errorf("%w: retries exceeded", ErrMediaDownload)
+	return nil, fmt.Errorf("%v: retries exceeded", ErrMediaDownload)
 }
 
 // uploadMediaPayload creates upload media request payload.
@@ -267,22 +241,22 @@ func uploadMediaPayload(mediaType MediaType, filename string, fr io.Reader) ([]b
 
 	part, err := writer.CreatePart(header)
 	if err != nil {
-		return nil, "", fmt.Errorf("media upload: %w", err)
+		return nil, "", fmt.Errorf("media upload: %v", err)
 	}
 
 	_, err = io.Copy(part, fr)
 	if err != nil {
-		return nil, "", fmt.Errorf("media upload: %w", err)
+		return nil, "", fmt.Errorf("media upload: %v", err)
 	}
 
 	err = writer.WriteField("type", string(mediaType))
 	if err != nil {
-		return nil, "", fmt.Errorf("media upload: %w", err)
+		return nil, "", fmt.Errorf("media upload: %v", err)
 	}
 
 	err = writer.WriteField("messaging_product", "whatsapp")
 	if err != nil {
-		return nil, "", fmt.Errorf("media upload: %w", err)
+		return nil, "", fmt.Errorf("media upload: %v", err)
 	}
 
 	_ = writer.Close()

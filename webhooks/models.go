@@ -20,8 +20,8 @@
 package webhooks
 
 import (
-	werrors "github.com/lowkruc/go-whatsapp-api/pkg/errors"
-	"github.com/lowkruc/go-whatsapp-api/pkg/models"
+	werrors "github.com/lowkruc/go-whatsapp-api/errors"
+	"github.com/lowkruc/go-whatsapp-api/models"
 )
 
 type (
@@ -231,10 +231,10 @@ type (
 	// the product in a catalog. Quantity represents the number of items. ItemPrice represents the price
 	// of a single item. Currency represents the price currency.
 	ProductItem struct {
-		ProductRetailerID string `json:"product_retailer_id,omitempty"`
-		Quantity          int64  `json:"quantity,omitempty"`
-		ItemPrice         int64  `json:"item_price,omitempty"`
-		Currency          string `json:"currency,omitempty"`
+		ProductRetailerID string  `json:"product_retailer_id,omitempty"`
+		Quantity          float64 `json:"quantity,omitempty"`
+		ItemPrice         float64 `json:"item_price,omitempty"`
+		Currency          string  `json:"currency,omitempty"`
 	}
 
 	// Order have information about order created by the customer. Order objects have the following properties:
@@ -351,13 +351,13 @@ type (
 	//- MessagingProduct messaging_product (string) Product used to send the message.
 	//  Value is always whatsapp.
 	//
-	//- Messages (array of objects) Information about a message received by
+	//- Messages messages (array of objects) Information about a message received by
 	//  the business that is subscribed to the webhook. See Message Object.
 	//
 	//- Metadata (object) A metadata object describing the business subscribed to
 	//  the webhook. See Metadata Object.
 	//
-	//- Statuses (array of objects) Status object for a message that was sent by
+	//- Statuses statuses (array of objects) Status object for a message that was sent by
 	//  the business that is subscribed to the webhook. See Status Object.
 	Value struct {
 		MessagingProduct string           `json:"messaging_product,omitempty"`
