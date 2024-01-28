@@ -20,8 +20,61 @@
 package whatsapp
 
 import (
+	"context"
+	"fmt"
+	"net/http"
 	"testing"
 )
+
+func ExampleNewClient() {
+	client := NewClient(
+		WithHTTPClient(http.DefaultClient),
+		WithBaseURL(BaseURL),
+		WithVersion(LowestSupportedVersion),
+		WithAccessToken("access_token"),
+		WithPhoneNumberID("phone_number_id"),
+		WithBusinessAccountID("whatsapp_business_account_id"),
+		WithHooks(nil),
+	)
+
+	client.SetAccessToken("myexampletoken")
+	client.SetPhoneNumberID("myexamplephoneid")
+	client.SetBusinessAccountID("businessaccountID")
+
+	cctx := client.context()
+
+	fmt.Printf("base url: %s\napi version: %s\ntoken: %s\nphone id: %s\nbusiness id: %s\n",
+		cctx.baseURL, cctx.apiVersion, cctx.accessToken, cctx.phoneNumberID, cctx.businessAccountID)
+
+	// Output:
+	// base url: https://graph.facebook.com/
+	// api version: v16.0
+	// token: myexampletoken
+	// phone id: myexamplephoneid
+	// business id: businessaccountID
+}
+
+func ExampleClient_RequestVerificationCode() {
+	client := NewClient(
+		WithHTTPClient(http.DefaultClient),
+		WithBaseURL(BaseURL),
+		WithVersion(LowestSupportedVersion),
+		WithAccessToken("access_token"),
+		WithPhoneNumberID("phone_number_id"),
+		WithBusinessAccountID("whatsapp_business_account_id"),
+	)
+
+	err := client.RequestVerificationCode(context.TODO(), SMSVerificationMethod, "en_US")
+	if err != nil {
+		fmt.Println(err)
+	}
+	err = client.RequestVerificationCode(context.TODO(), VoiceVerificationMethod, "en_US")
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	// Output:
+}
 
 func TestMediaMaxAllowedSize(t *testing.T) {
 	t.Parallel()

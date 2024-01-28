@@ -65,7 +65,7 @@ import (
 //	  })
 //
 //	  using a generic handler
-//	   := listener.GlobalNotificationHandler()
+//	  handler := listener.GlobalNotificationHandler()
 type EventListener struct {
 	h       *Hooks
 	hef     HooksErrorHandler
@@ -301,14 +301,12 @@ func (ls *EventListener) NotificationHandler() http.Handler {
 func (ls *EventListener) GlobalHandler() http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		var buff bytes.Buffer
-		_, err := io.Copy(&buff, request.Body)
-		defer func() {
-			request.Body = io.NopCloser(&buff)
-		}()
-		if err != nil {
+		if _, err := io.Copy(&buff, request.Body); err != nil && !errors.Is(err, io.EOF) {
 			writer.WriteHeader(http.StatusInternalServerError)
+
 			return
 		}
+		request.Body = io.NopCloser(&buff)
 
 		if ls.options != nil && ls.options.ValidateSignature {
 			signature, _ := ExtractSignatureFromHeader(request.Header)
@@ -331,7 +329,7 @@ func (ls *EventListener) GlobalHandler() http.Handler {
 
 		// call the generic handler
 		if err := ls.g(request.Context(), writer, &notification); err != nil {
-			err = fmt.Errorf("%w: %w", ErrOnGenericHandlerFunc, err)
+			err = fmt.Errorf("%v: %v", ErrOnGenericHandlerFunc, err)
 			if handleError(request.Context(), writer, request, ls.neh, err) {
 				return
 			}
@@ -340,8 +338,6 @@ func (ls *EventListener) GlobalHandler() http.Handler {
 		writer.WriteHeader(http.StatusOK)
 	})
 }
-
-// HandleNotification handles all the notification types. It is a Global/Generic handler.
 
 // SubscriptionVerificationHandler returns a http.Handler that can be used to verify the subscription.
 func (ls *EventListener) SubscriptionVerificationHandler() http.Handler {

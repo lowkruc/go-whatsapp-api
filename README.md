@@ -1,5 +1,7 @@
 # whatsapp
 
+# SETUP
+
 ## pre requisites
 
 To be able to test/use this api you need Access Token, Phone number ID and Business ID. For that
@@ -15,6 +17,5 @@ to be sure that everything is working fine before you start using this api.
 
 When all the above is done you can start using this api.
 
-## Example Whatsapp API
 
-## Example Webhook
+Head over to [HOWTO](/HOWTO.md) file

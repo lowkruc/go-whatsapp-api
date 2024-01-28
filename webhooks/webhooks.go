@@ -32,8 +32,8 @@ import (
 	"net/http"
 	"strings"
 
-	werrors "github.com/lowkruc/go-whatsapp-api/pkg/errors"
-	"github.com/lowkruc/go-whatsapp-api/pkg/models"
+	werrors "github.com/lowkruc/go-whatsapp-api/errors"
+	"github.com/lowkruc/go-whatsapp-api/models"
 )
 
 // PayloadMaxSize is the maximum size of the payload that can be sent to the webhook.
@@ -113,7 +113,7 @@ type (
 	}
 
 	OnOrderMessageHook func(
-		context.Context, *NotificationContext, *MessageContext, *Order) error
+		ctx context.Context, nctx *NotificationContext, mctx *MessageContext, order *Order) error
 	OnButtonMessageHook func(
 		ctx context.Context, nctx *NotificationContext, mctx *MessageContext, button *Button) error
 	OnLocationMessageHook func(
@@ -318,7 +318,7 @@ func NoOpHooksErrorHandler(err error) error {
 
 // NoOpNotificationErrorHandler is a no-op notification error handler. It ignores the error and
 // returns a response with status code 200.
-func NoOpNotificationErrorHandler(_ context.Context, _ *http.Request, _ error) *NotificationErrHandlerResponse {
+func NoOpNotificationErrorHandler(_ context.Context, _ *http.Request, err error) *NotificationErrHandlerResponse {
 	return &NotificationErrHandlerResponse{
 		StatusCode: http.StatusOK,
 		Skip:       false,
@@ -452,12 +452,26 @@ func attachHooksToValue(ctx context.Context, id string, value *Value, hooks *Hoo
 		}
 	}
 
-	return errors.Join(nonFatalErrors...)
+	return getEncounteredError(nonFatalErrors)
+}
+
+func getEncounteredError(errs []error) error {
+	var finalErr error
+	for i := 0; i < len(errs); i++ {
+		if finalErr == nil {
+			finalErr = errs[i]
+
+			continue
+		}
+		finalErr = fmt.Errorf("%v, %v", finalErr, errs[i])
+	}
+
+	return finalErr
 }
 
 var ErrFailedToAttachHookToMessage = errors.New("could not attach hooks to message")
 
-var errHooksOrMessageIsNil = fmt.Errorf("%w: hooks or message is nil", ErrFailedToAttachHookToMessage)
+var errHooksOrMessageIsNil = fmt.Errorf("%v: hooks or message is nil", ErrFailedToAttachHookToMessage)
 
 //nolint:cyclop
 func attachHooksToMessage(ctx context.Context, nctx *NotificationContext, hooks *Hooks, message *Message) error {
@@ -576,7 +590,7 @@ func NotificationHandler(
 
 		if options != nil && options.BeforeFunc != nil {
 			if bfe := options.BeforeFunc(ctx, notification); bfe != nil {
-				err = fmt.Errorf("%w: %w", ErrOnBeforeFuncHook, bfe)
+				err = fmt.Errorf("%v: %v", ErrOnBeforeFuncHook, bfe)
 				if handleError(ctx, writer, request, neh, err) {
 					return
 				}
@@ -593,7 +607,7 @@ func NotificationHandler(
 		}
 		// Apply the Hooks
 		if err = AttachHooksToNotification(ctx, notification, hooks, heh); err != nil {
-			err = fmt.Errorf("%w: %w", ErrOnAttachNotificationHooks, err)
+			err = fmt.Errorf("%v: %v", ErrOnAttachNotificationHooks, err)
 			if handleError(ctx, writer, request, neh, err) {
 				return
 			}
@@ -670,26 +684,6 @@ func VerifySubscriptionHandler(verifier SubscriptionVerifier) http.Handler {
 	})
 }
 
-// HandlerFunc handles the verification request.
-func (verifier SubscriptionVerifier) HandlerFunc(writer http.ResponseWriter, request *http.Request) {
-	q := request.URL.Query()
-	mode := q.Get("hub.mode")
-	challenge := q.Get("hub.challenge")
-	token := q.Get("hub.verify_token")
-	if err := verifier(request.Context(), &VerificationRequest{
-		Mode:      mode,
-		Challenge: challenge,
-		Token:     token,
-	}); err != nil {
-		writer.WriteHeader(http.StatusBadRequest)
-
-		return
-	}
-
-	writer.WriteHeader(http.StatusOK)
-	_, _ = writer.Write([]byte(challenge))
-}
-
 // ValidateSignature validates the signature of the payload. All Event Notification payloads are signed
 // with a SHA256 signature and include the signature in the request's X-Hub-Signature-256 header, preceded
 // with sha256=. You don't have to validate the payload, but you should.
@@ -731,7 +725,7 @@ func ExtractSignatureFromHeader(header http.Header) (string, error) {
 	signature := header.Get(SignatureHeaderKey)
 	if !strings.HasPrefix(signature, "sha256=") {
 		return "",
-			fmt.Errorf("signature is empty or does not have prefix \"sha256\" %w", ErrSignatureNotFound)
+			fmt.Errorf("signature is empty or does not have prefix \"sha256\" %v", ErrSignatureNotFound)
 	}
 
 	return signature[7:], nil
