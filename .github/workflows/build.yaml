@@ -1,0 +1,45 @@
+name: build
+
+env:
+  GO_VERSION: ">=1.20"
+  GOPRIVATE: "github.com/piusalfred/*"
+  GH_ACCESS_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+    tags:
+      - 'v*.*.*'
+  pull_request:
+    branches:
+      - main
+      - dev
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest,macos-latest]
+        arch: [amd64, arm64]
+        include:
+          - os: windows-latest
+            arch: amd64
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: ${{ env.GO_VERSION }}
+     
+    - name: Install private dependencies
+      run: |
+        git config --global url.https://$GH_ACCESS_TOKEN@github.com/.insteadOf https://github.com/
+        go mod tidy
+      
+    - name: Run tests
+      run: go test -v -race ./... && go build -race ./...
