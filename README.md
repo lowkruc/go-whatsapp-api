@@ -1,17 +1,5 @@
 # whatsapp
 
-## implemented
-- [x] send text message
-- [x] send image message
-- [x] send location message
-- [x] send contact message
-- [x] send template message
-- [x] react to message
-- [x] mark message as read
-- [x] webhooks
-
-# SETUP
-
 ## pre requisites
 
 To be able to test/use this api you need Access Token, Phone number ID and Business ID. For that
