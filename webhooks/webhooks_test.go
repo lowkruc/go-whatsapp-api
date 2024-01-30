@@ -293,6 +293,40 @@ func TestNotificationHandler_Options(t *testing.T) {
 			},
 			wantStatus: http.StatusOK,
 		},
+		{
+			name: "status change webhook",
+			fields: fields{
+				BeforeFunc: func(ctx context.Context, notification *Notification) error {
+					// return NewFatalError(errors.New("fatal error"), "just being rude")
+					return nil
+				},
+				AfterFunc: func(ctx context.Context, notification *Notification, err error) {
+					t.Logf("notification: %+v", humanReadableNotification(t, notification))
+				},
+				ValidateSignature: false,
+				Secret:            "demo",
+				Hooks:             nil,
+				Body:              []byte(`{"object":"whatsapp_business_account","entry":[{"id":"144509515401993","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"15550416043","phone_number_id":"121720824363144"},"statuses":[{"id":"wamid.HBgNNjI4MTI3MjEyODI3MBUCABEYEjM4OEU1ODc2MzhBQzlBM0REQgA=","status":"sent","timestamp":"1706634353","recipient_id":"6281272128270","conversation":{"id":"6bbb46fcaf0449395c5bed5c43fb5fbf","expiration_timestamp":"1706720760","origin":{"type":"service"}},"pricing":{"billable":true,"pricing_model":"CBP","category":"service"}}]},"field":"messages"}]}]}`), //nolint:lll
+			},
+			wantStatus: http.StatusOK,
+		},
+		{
+			name: "unknown webhook",
+			fields: fields{
+				BeforeFunc: func(ctx context.Context, notification *Notification) error {
+					// return NewFatalError(errors.New("fatal error"), "just being rude")
+					return nil
+				},
+				AfterFunc: func(ctx context.Context, notification *Notification, err error) {
+					t.Logf("notification: %+v", humanReadableNotification(t, notification))
+				},
+				ValidateSignature: false,
+				Secret:            "demo",
+				Hooks:             nil,
+				Body:              []byte(`{"object":"whatsapp_business_account","entry":[{"id":"130363306827170","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"6281388288202","phone_number_id":"175174709002390"},"contacts":[{"profile":{"name":"mahreenanakdodo 01"},"wa_id":"6281770624500"}],"messages":[{"from":"6281770624500","id":"wamid.HBgNNjI4MTc3MDYyNDUwMBUCABIYIEY5MkY4QUZCREFDMkI4OUQ4QUFCMDg1ODE5MUI3NDU1AA==","timestamp":"1706501348","errors":[{"code":131051,"title":"Message type unknown","message":"Message type unknown","error_data":{"details":"Message type is currently not supported."}}],"type":"unsupported"}]},"field":"messages"}]}]}`), //nolint:lll
+			},
+			wantStatus: http.StatusOK,
+		},
 	}
 
 	for _, tt := range testcases {
