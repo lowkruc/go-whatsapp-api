@@ -78,7 +78,7 @@ type (
 	Conversation struct {
 		ID     string              `json:"id,omitempty"`
 		Origin *ConversationOrigin `json:"origin,omitempty"`
-		Expiry int                 `json:"expiration_timestamp,omitempty"`
+		Expiry string              `json:"expiration_timestamp,omitempty"`
 	}
 
 	// Status contains information about the status of a message sent to a customer.
@@ -118,7 +118,7 @@ type (
 		ID           string           `json:"id,omitempty"`
 		RecipientID  string           `json:"recipient_id,omitempty"`
 		StatusValue  string           `json:"status,omitempty"`
-		Timestamp    int              `json:"timestamp,omitempty"`
+		Timestamp    string           `json:"timestamp,omitempty"`
 		Conversation *Conversation    `json:"conversation,omitempty"`
 		Pricing      *Pricing         `json:"pricing,omitempty"`
 		Errors       []*werrors.Error `json:"werrors,omitempty"`
@@ -302,7 +302,7 @@ type (
 	// Hash, hash — String. The ID for the messages system customer_identity_changed.
 	Identity struct {
 		Acknowledged     bool   `json:"acknowledged,omitempty"`
-		CreatedTimestamp int64  `json:"created_timestamp,omitempty"`
+		CreatedTimestamp string `json:"created_timestamp,omitempty"`
 		Hash             string `json:"hash,omitempty"`
 	}
 
