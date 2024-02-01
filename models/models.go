@@ -22,10 +22,11 @@ package models
 import "time"
 
 const (
-	InteractiveMessageButton      = "button"
-	InteractiveMessageList        = "list"
-	InteractiveMessageProduct     = "product"
-	InteractiveMessageProductList = "product_list"
+	InteractiveMessageButton          = "button"
+	InteractiveMessageList            = "list"
+	InteractiveMessageProduct         = "product"
+	InteractiveMessageProductList     = "product_list"
+	InteractiveMessageRequestLocation = "location_request_message"
 )
 
 type (
@@ -442,6 +443,7 @@ type (
 	//	- Sections, sections (array of objects) Required for List Messages and Multi-Product Messages. Array of
 	//	  section objects. Minimum of 1, maximum of 10. See InteractiveSection object.
 	InteractiveAction struct {
+		Name              string                `json:"name,omitempty"`
 		Button            string                `json:"button,omitempty"`
 		Buttons           []*InteractiveButton  `json:"buttons,omitempty"`
 		CatalogID         string                `json:"catalog_id,omitempty"`
