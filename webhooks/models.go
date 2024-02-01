@@ -206,7 +206,7 @@ type (
 
 	// Interactive represent the interactive template.
 	Interactive struct {
-		Type string `json:"type,omitempty"`
+		Type string `json:"type"`
 		*InteractiveType
 	}
 
