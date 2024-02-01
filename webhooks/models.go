@@ -206,7 +206,8 @@ type (
 
 	// Interactive represent the interactive template.
 	Interactive struct {
-		Type *InteractiveType `json:"type,omitempty"`
+		Type string `json:"type,omitempty"`
+		*InteractiveType
 	}
 
 	// InteractiveType represent an item sent to user. It can be a reply button

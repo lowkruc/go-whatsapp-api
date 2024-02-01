@@ -327,6 +327,23 @@ func TestNotificationHandler_Options(t *testing.T) {
 			},
 			wantStatus: http.StatusOK,
 		},
+		{
+			name: "interactive webhook",
+			fields: fields{
+				BeforeFunc: func(ctx context.Context, notification *Notification) error {
+					// return NewFatalError(errors.New("fatal error"), "just being rude")
+					return nil
+				},
+				AfterFunc: func(ctx context.Context, notification *Notification, err error) {
+					t.Logf("notification: %+v", humanReadableNotification(t, notification))
+				},
+				ValidateSignature: false,
+				Secret:            "demo",
+				Hooks:             nil,
+				Body:              []byte(`{"object":"whatsapp_business_account","entry":[{"id":"144509515401993","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"15550416043","phone_number_id":"121720824363144"},"contacts":[{"profile":{"name":"Ahmad Saekoni"},"wa_id":"6281272128270"}],"messages":[{"context":{"from":"15550416043","id":"wamid.HBgNNjI4MTI3MjEyODI3MBUCABEYEkM3RkQxMzE1NkYwOEY0RDkwMwA="},"from":"6281272128270","id":"wamid.HBgNNjI4MTI3MjEyODI3MBUCABIYFjNFQjAxQzFEOTczM0Q4QkZEMDNBMjMA","timestamp":"1706801857","type":"interactive","interactive":{"type":"button_reply","button_reply":{"id":"002","title":"Nah kan"}}}]},"field":"messages"}]}]}`), //nolint:lll
+			},
+			wantStatus: http.StatusOK,
+		},
 	}
 
 	for _, tt := range testcases {
